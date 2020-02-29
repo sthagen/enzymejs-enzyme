@@ -1253,6 +1253,7 @@ describe('shallow', () => {
     'hostNodes',
     'html',
     'instance',
+    'invoke',
     'is',
     'isEmpty',
     'isEmptyRender',
