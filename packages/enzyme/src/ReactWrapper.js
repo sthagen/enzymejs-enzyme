@@ -1,5 +1,6 @@
 import flat from 'array.prototype.flat';
 import has from 'has';
+import trim from 'string.prototype.trim';
 
 import {
   containsChildrenSubArray,
@@ -575,9 +576,9 @@ class ReactWrapper {
    * @returns {boolean}
    */
   isEmptyRender() {
-    const nodes = this.getNodeInternal();
+    const nodes = this.getNodesInternal();
 
-    return renderedDive(nodes);
+    return nodes.every((node) => renderedDive(node));
   }
 
   /**
@@ -749,7 +750,7 @@ class ReactWrapper {
     }
     const instance = this.single('context', () => this.instance());
     if (instance === null) {
-      throw new Error('ReactWrapper::context() can only be called on components with instances');
+      throw new Error('ReactWrapper::context() can only be called on wrapped nodes that have a non-null instance');
     }
     const _context = instance.context;
     if (typeof name !== 'undefined') {
@@ -1285,11 +1286,11 @@ if (ITERATOR_SYMBOL) {
 function privateWarning(prop, extraMessage) {
   Object.defineProperty(ReactWrapper.prototype, prop, {
     get() {
-      throw new Error(`
+      throw new Error(trim(`
         Attempted to access ReactWrapper::${prop}, which was previously a private property on
         Enzyme ReactWrapper instances, but is no longer and should not be relied upon.
         ${extraMessage}
-      `);
+      `));
     },
     enumerable: false,
     configurable: false,

@@ -1,6 +1,7 @@
 import flat from 'array.prototype.flat';
 import has from 'has';
 import shallowEqual from 'enzyme-shallow-equal';
+import trim from 'string.prototype.trim';
 
 import {
   nodeEqual,
@@ -82,7 +83,7 @@ function validateOptions(options) {
     disableLifecycleMethods,
     enableComponentDidUpdateOnSetState,
     supportPrevContextArgumentOfComponentDidUpdate,
-    lifecycles,
+    lifecycles = {},
   } = options;
   if (typeof lifecycleExperimental !== 'undefined' && typeof lifecycleExperimental !== 'boolean') {
     throw new Error('lifecycleExperimental must be either true or false if provided');
@@ -1826,11 +1827,11 @@ if (ITERATOR_SYMBOL) {
 function privateWarning(prop, extraMessage) {
   Object.defineProperty(ShallowWrapper.prototype, prop, {
     get() {
-      throw new Error(`
+      throw new Error(trim(`
         Attempted to access ShallowWrapper::${prop}, which was previously a private property on
         Enzyme ShallowWrapper instances, but is no longer and should not be relied upon.
         ${extraMessage}
-      `);
+      `));
     },
     enumerable: false,
     configurable: false,

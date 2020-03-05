@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import React from 'react';
 import wrap from 'mocha-wrap';
 import sinon from 'sinon-sandbox';
+import hasSymbols from 'has-symbols';
 
 import { mount, shallow } from 'enzyme';
 import { get } from 'enzyme/build/configuration';
@@ -110,6 +111,14 @@ describe('debug', () => {
         <div id="foo" className="bar" />
       ))).to.equal((
         '<div id="foo" className="bar" />'
+      ));
+    });
+
+    itIf(hasSymbols(), 'renders symbol props', () => {
+      expect(debugElement((
+        <div symbol={Symbol.iterator} other={Symbol('foo')} />
+      ))).to.equal((
+        '<div symbol={[Symbol(Symbol.iterator)]} other={[Symbol(foo)]} />'
       ));
     });
 
@@ -529,14 +538,16 @@ describe('debug', () => {
     it('renders shallow wrapper properly', () => {
       class Foo extends React.Component {
         render() {
+          const { children } = this.props;
           return (
             <div className="foo">
               <span>From Foo</span>
-              {this.props.children}
+              {children}
             </div>
           );
         }
       }
+
       class Bar extends React.Component {
         render() {
           return (
@@ -865,10 +876,11 @@ describe('debug', () => {
       ParentOfNamed = () => <NamedComponent />;
     });
 
-    it('works with a `mount` wrapper', () => {
-      const wrapper = mount(<Parent foo="hello" />);
-      expect(wrapper.debug()).to.equal((
-        `<Parent foo="hello">
+    describeWithDOM('', () => {
+      it('works with a `mount` wrapper', () => {
+        const wrapper = mount(<Parent foo="hello" />);
+        expect(wrapper.debug()).to.equal((
+          `<Parent foo="hello">
   <span>
     <ForwardRef foo="hello">
       <div>
@@ -877,36 +889,37 @@ describe('debug', () => {
     </ForwardRef>
   </span>
 </Parent>`
-      ));
-    });
+        ));
+      });
 
-    it('works with a `mount` `.find` wrapper', () => {
-      const wrapper = mount(<Parent foo="hello" />);
-      const results = wrapper.find(SomeComponent);
-      expect(results.debug()).to.equal((
-        `<ForwardRef foo="hello">
+      it('works with a `mount` `.find` wrapper', () => {
+        const wrapper = mount(<Parent foo="hello" />);
+        const results = wrapper.find(SomeComponent);
+        expect(results.debug()).to.equal((
+          `<ForwardRef foo="hello">
   <div>
     <span className="child1" />
   </div>
 </ForwardRef>`
-      ));
+        ));
+      });
+
+      it('works with a displayName with mount', () => {
+        const wrapper = mount(<ParentOfNamed />);
+        expect(wrapper.debug()).to.equal((
+          `<ParentOfNamed>
+  <${NamedComponent.displayName}>
+    <div />
+  </${NamedComponent.displayName}>
+</ParentOfNamed>`
+        ));
+      });
     });
 
     it('works with a displayName with shallow', () => {
       const wrapper = shallow(<ParentOfNamed />);
       expect(wrapper.debug()).to.equal((
         `<${NamedComponent.displayName} />`
-      ));
-    });
-
-    it('works with a displayName with mount', () => {
-      const wrapper = mount(<ParentOfNamed />);
-      expect(wrapper.debug()).to.equal((
-        `<ParentOfNamed>
-  <${NamedComponent.displayName}>
-    <div />
-  </${NamedComponent.displayName}>
-</ParentOfNamed>`
       ));
     });
   });
