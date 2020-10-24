@@ -120,20 +120,54 @@ function unmemoType(type) {
   return isMemo(type) ? type.type : type;
 }
 
-function checkIsSuspenseAndCloneElement(el, { suspenseFallback }) {
-  if (!isSuspense(el)) {
-    return el;
+function transformSuspense(renderedEl, prerenderEl, { suspenseFallback }) {
+  if (!isSuspense(renderedEl)) {
+    return renderedEl;
   }
 
-  let { children } = el.props;
+  let { children } = renderedEl.props;
 
   if (suspenseFallback) {
-    const { fallback } = el.props;
+    const { fallback } = renderedEl.props;
     children = replaceLazyWithFallback(children, fallback);
   }
 
-  const FakeSuspenseWrapper = (props) => React.createElement(el.type, { ...el.props, ...props }, children);
-  return React.createElement(FakeSuspenseWrapper, null, children);
+  const {
+    propTypes,
+    defaultProps,
+    contextTypes,
+    contextType,
+    childContextTypes,
+  } = renderedEl.type;
+
+  const FakeSuspense = Object.assign(
+    isStateful(prerenderEl.type)
+      ? class FakeSuspense extends prerenderEl.type {
+        render() {
+          const { type, props } = prerenderEl;
+          return React.createElement(
+            type,
+            { ...props, ...this.props },
+            children,
+          );
+        }
+      }
+      : function FakeSuspense(props) { // eslint-disable-line prefer-arrow-callback
+        return React.createElement(
+          renderedEl.type,
+          { ...renderedEl.props, ...props },
+          children,
+        );
+      },
+    {
+      propTypes,
+      defaultProps,
+      contextTypes,
+      contextType,
+      childContextTypes,
+    },
+  );
+  return React.createElement(FakeSuspense, null, children);
 }
 
 function elementToTree(el) {
@@ -609,7 +643,7 @@ class ReactSixteenAdapter extends EnzymeAdapter {
 
       const typeIsExisted = !!(renderedEl && renderedEl.type);
       if (is166 && typeIsExisted) {
-        const clonedEl = checkIsSuspenseAndCloneElement(renderedEl, { suspenseFallback });
+        const clonedEl = transformSuspense(renderedEl, elConfig, { suspenseFallback });
 
         const elementIsChanged = clonedEl.type !== renderedEl.type;
         if (elementIsChanged) {
@@ -652,7 +686,7 @@ class ReactSixteenAdapter extends EnzymeAdapter {
             throw TypeError('`React.lazy` is not supported by shallow rendering.');
           }
 
-          renderedEl = checkIsSuspenseAndCloneElement(renderedEl, { suspenseFallback });
+          renderedEl = transformSuspense(renderedEl, renderedEl, { suspenseFallback });
           const { type: Component } = renderedEl;
 
           const context = getMaskedContext(Component.contextTypes, unmaskedContext);
