@@ -584,4 +584,83 @@ export default function describeSetProps({
       });
     });
   });
+
+  describe('componentDidUpdate and componentWillReceiveProps with setState', () => {
+    let spy;
+    beforeEach(() => {
+      spy = sinon.spy();
+    });
+
+    class WithoutSetStateInCWRP extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { count: 0 };
+      }
+
+      componentWillReceiveProps(nextProps) {
+        spy('componentWillReceiveProps', this.props, nextProps);
+      }
+
+      componentDidUpdate(prevProps, prevState) {
+        spy('componentDidUpdate', prevProps, this.props, prevState, this.state);
+      }
+
+      render() {
+        spy('render', this.props, this.state);
+        const { count } = this.state;
+        return (<div>{count}</div>);
+      }
+    }
+
+    class WithSetStateInCWRP extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { count: 0 };
+      }
+
+      componentWillReceiveProps(nextProps) {
+        spy('componentWillReceiveProps', this.props, nextProps);
+        this.setState(({ count }) => ({ count: count + 1 }));
+      }
+
+      componentDidUpdate(prevProps, prevState) {
+        spy('componentDidUpdate', prevProps, this.props, prevState, this.state);
+      }
+
+      render() {
+        spy('render', this.props, this.state);
+        const { count } = this.state;
+        return (<div>{count}</div>);
+      }
+    }
+
+    const oldProps = { a: 'old a', b: 'old b' };
+    const newProps = { a: 'old a', b: 'new b', d: 'new d' };
+    const oldState = { count: 0 };
+    const newState = { count: 1 };
+
+    it('calls componentDidUpdate when componentWillReceiveProps without setting state', () => {
+      const wrapper = Wrap(<WithoutSetStateInCWRP a="old a" b="old b" />);
+      wrapper.setProps({ b: 'new b', d: 'new d' });
+      expect(spy.args).to.deep.equal([
+        ['render', oldProps, oldState],
+        ['componentWillReceiveProps', oldProps, newProps],
+        ['render', newProps, oldState],
+        ['componentDidUpdate', oldProps, newProps, oldState, oldState],
+      ]);
+    });
+
+    // TODO: assertion output is incorrect after calling setState inside of componentWillReceiveProps
+    itIf(!isShallow, 'calls componentDidUpdate when componentWillReceiveProps sets state', () => {
+      const wrapper = Wrap(<WithSetStateInCWRP a="old a" b="old b" />);
+      wrapper.setProps({ b: 'new b', d: 'new d' });
+
+      expect(spy.args).to.deep.equal([
+        ['render', oldProps, oldState],
+        ['componentWillReceiveProps', oldProps, newProps],
+        ['render', newProps, newState],
+        ['componentDidUpdate', oldProps, newProps, oldState, newState],
+      ]);
+    });
+  });
 }

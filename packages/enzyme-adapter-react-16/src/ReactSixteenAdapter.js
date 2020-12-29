@@ -57,6 +57,7 @@ import {
   wrapWithWrappingComponent,
   getWrappingComponentMountRenderer,
   compareNodeTypeOf,
+  spyMethod,
 } from 'enzyme-adapter-utils';
 import findCurrentFiberUsingSlowPath from './findCurrentFiberUsingSlowPath';
 import detectFiberTags from './detectFiberTags';
@@ -700,14 +701,39 @@ class ReactSixteenAdapter extends EnzymeAdapter {
             ));
           }
 
-          if (!isStateful(Component) && typeof Component === 'function') {
+          const isComponentStateful = isStateful(Component);
+
+          if (!isComponentStateful && typeof Component === 'function') {
             return withSetStateAllowed(() => renderElement(
               { ...renderedEl, type: wrapFunctionalComponent(Component) },
               context,
             ));
           }
 
-          if (isStateful) {
+          if (isComponentStateful) {
+            if (
+              renderer._instance
+              && el.props === renderer._instance.props
+              && !shallowEqual(context, renderer._instance.context)
+            ) {
+              const { restore } = spyMethod(
+                renderer,
+                '_updateClassComponent',
+                (originalMethod) => function _updateClassComponent(...args) {
+                  const { props } = renderer._instance;
+                  const clonedProps = { ...props };
+                  renderer._instance.props = clonedProps;
+
+                  const result = originalMethod.apply(renderer, args);
+
+                  renderer._instance.props = props;
+                  restore();
+
+                  return result;
+                },
+              );
+            }
+
             // fix react bug; see implementation of `getEmptyStateValue`
             const emptyStateValue = getEmptyStateValue();
             if (emptyStateValue) {
@@ -863,6 +889,7 @@ class ReactSixteenAdapter extends EnzymeAdapter {
   displayNameOfNode(node) {
     if (!node) return null;
     const { type, $$typeof } = node;
+    const adapter = this;
 
     const nodeType = type || $$typeof;
 
@@ -886,13 +913,13 @@ class ReactSixteenAdapter extends EnzymeAdapter {
       case ContextProvider || NaN: return 'ContextProvider';
       case Memo || NaN: {
         const nodeName = displayNameOfNode(node);
-        return typeof nodeName === 'string' ? nodeName : `Memo(${displayNameOfNode(type)})`;
+        return typeof nodeName === 'string' ? nodeName : `Memo(${adapter.displayNameOfNode(type)})`;
       }
       case ForwardRef || NaN: {
         if (type.displayName) {
           return type.displayName;
         }
-        const name = displayNameOfNode({ type: type.render });
+        const name = adapter.displayNameOfNode({ type: type.render });
         return name ? `ForwardRef(${name})` : 'ForwardRef';
       }
       case Lazy || NaN: {
