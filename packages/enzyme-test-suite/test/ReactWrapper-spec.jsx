@@ -28,6 +28,8 @@ import {
   memo,
   Profiler,
   Suspense,
+  useState,
+  useEffect,
 } from './_helpers/react-compat';
 import {
   describeWithDOM,
@@ -1002,7 +1004,8 @@ describeWithDOM('mount', () => {
       if (typeof performance === 'undefined') {
         expect(firstArgs[2]).to.be.least(0);
         expect(firstArgs[3]).to.be.least(0);
-      } else {
+      } else if (!is('^16.9')) {
+        // React ^16.9 returns `0` here
         expect(firstArgs[2]).to.be.greaterThan(0);
         expect(firstArgs[3]).to.be.greaterThan(0);
       }
@@ -1013,7 +1016,8 @@ describeWithDOM('mount', () => {
       if (typeof performance === 'undefined') {
         expect(secondArgs[2]).to.be.least(0);
         expect(secondArgs[3]).to.be.least(0);
-      } else {
+      } else if (!is('^16.9')) {
+        // React ^16.9 returns `0` here
         expect(secondArgs[2]).to.be.greaterThan(0);
         expect(secondArgs[3]).to.be.greaterThan(0);
       }
@@ -1282,6 +1286,38 @@ describeWithDOM('mount', () => {
         </Suspense>
       );
       expect(() => mount(<SuspenseComponent />, { suspenseFallback: false })).to.throw();
+    });
+
+    itIf(!!(useState && useEffect), 'avoids a TypeError', () => {
+      const Component2 = lazy(() => Promise.resolve({ default: () => <div /> }));
+
+      function Component() {
+        const [alreadyRun, setAlreadyRun] = useState(false);
+
+        useEffect(() => {
+          setAlreadyRun(true);
+        }, []);
+
+        if (!alreadyRun) {
+          return null;
+        }
+
+        return <Component2 />;
+      }
+
+      const wrapper = mount(
+        <Suspense fallback={<div>loading</div>}>
+          <Component />
+        </Suspense>,
+      );
+      expect(wrapper.debug()).to.equal(
+        `<Suspense fallback={{...}}>
+  <Component />
+  <div>
+    loading
+  </div>
+</Suspense>`,
+      );
     });
   });
 
