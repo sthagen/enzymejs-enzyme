@@ -752,7 +752,6 @@ class ReactSixteenAdapter extends EnzymeAdapter {
                       writable: true,
                     });
                   }
-                  return true;
                 },
               });
             }
@@ -991,4 +990,4 @@ class ReactSixteenAdapter extends EnzymeAdapter {
   }
 }
 
-module.exports = ReactSixteenAdapter;
+export default ReactSixteenAdapter;
